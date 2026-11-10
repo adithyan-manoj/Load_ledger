@@ -4,3 +4,6 @@ sqlalchemy
 python-dotenv
 psycopg2-binary
 pydantic
+google-auth
+pyjwt
+requests

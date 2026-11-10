@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/background_scaffold.dart';
 import 'splash_loading_screen.dart';
+import '../core/auth/auth_providers.dart';
 
 class HomeDashboardScreen extends ConsumerWidget {
   const HomeDashboardScreen({super.key});
@@ -62,12 +63,97 @@ class HomeDashboardScreen extends ConsumerWidget {
       data: (appState) {
         final branches = appState.offices;
 
+        final authState = ref.watch(authNotifierProvider);
+
         return BackgroundScaffold(
           appBar: AppBar(
             title: const Text('CO-OP RECOVERY'),
             backgroundColor: Colors.transparent,
             elevation: 0,
             surfaceTintColor: Colors.transparent,
+            actions: [
+              if (authState.employee != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: PopupMenuButton<String>(
+                    color: AppTheme.surface,
+                    icon: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: AppTheme.primary.withValues(alpha: 0.3),
+                      child: Text(
+                        authState.employee!.name.isNotEmpty
+                            ? authState.employee!.name[0].toUpperCase()
+                            : 'O',
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        enabled: false,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              authState.employee!.name,
+                              style: const TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              authState.employee!.email,
+                              style: const TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                authState.employee!.role.toUpperCase(),
+                                style: const TextStyle(
+                                  color: AppTheme.primary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 'logout',
+                        child: Row(
+                          children: [
+                            Icon(Icons.logout,
+                                size: 18, color: Colors.redAccent),
+                            SizedBox(width: 8),
+                            Text('Sign Out',
+                                style: TextStyle(color: Colors.redAccent)),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onSelected: (val) {
+                      if (val == 'logout') {
+                        ref.read(authNotifierProvider.notifier).signOut();
+                      }
+                    },
+                  ),
+                ),
+            ],
           ),
           floatingActionButton: SizedBox(
             height: 60,

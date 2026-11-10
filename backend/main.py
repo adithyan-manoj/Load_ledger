@@ -1,9 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 import uuid
-import models, schemas
+import json
+import hashlib
+import datetime
+import models, schemas, auth_service
 from database import SessionLocal, engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
@@ -22,6 +25,235 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "Loan Recovery API is running"}
+
+# ==========================================
+# Authentication & Identity Endpoints
+# ==========================================
+
+@app.post("/auth/google-login", response_model=schemas.TokenResponse)
+def google_login(payload: schemas.GoogleLoginRequest, db: Session = Depends(get_db)):
+    # 1. Verify Google ID Token
+    google_profile = auth_service.verify_google_id_token(payload.id_token)
+    email = google_profile.get("email", "").lower().strip()
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google account did not return a valid email address.",
+        )
+
+    # 2. Check Employee Whitelist
+    employee = db.query(models.AuthorizedEmployee).filter(
+        models.AuthorizedEmployee.email == email
+    ).first()
+
+    if not employee or not employee.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Access denied. Employee email '{email}' is not authorized by the Co-operative Society.",
+        )
+
+    # 3. Check / Register Device Session
+    session = db.query(models.DeviceSession).filter(
+        models.DeviceSession.employee_id == employee.id,
+        models.DeviceSession.device_id == payload.device_id,
+    ).first()
+
+    if session and session.is_revoked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. This device has been remotely revoked by system administration.",
+        )
+
+    # 4. Generate JWT Pair
+    token_claims = {
+        "sub": employee.id,
+        "email": employee.email,
+        "role": employee.role,
+        "device_id": payload.device_id,
+    }
+    access_token = auth_service.create_access_token(token_claims)
+    refresh_token = auth_service.create_refresh_token(token_claims)
+
+    refresh_token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+
+    if not session:
+        session = models.DeviceSession(
+            id=str(uuid.uuid4()),
+            employee_id=employee.id,
+            device_id=payload.device_id,
+            device_name=payload.device_name or "Mobile Client",
+            refresh_token=refresh_token_hash,
+            is_revoked=False,
+            last_seen_at=datetime.datetime.utcnow(),
+        )
+        db.add(session)
+    else:
+        session.refresh_token = refresh_token_hash
+        session.last_seen_at = datetime.datetime.utcnow()
+
+    db.commit()
+
+    assigned_branches = []
+    try:
+        assigned_branches = json.loads(employee.assigned_branches)
+    except Exception:
+        pass
+
+    return schemas.TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        employee=schemas.EmployeeResponse(
+            id=employee.id,
+            email=employee.email,
+            name=employee.name,
+            role=employee.role,
+            assigned_branches=assigned_branches,
+            is_active=employee.is_active,
+        ),
+    )
+
+@app.post("/auth/refresh", response_model=schemas.TokenResponse)
+def refresh_token(payload: schemas.RefreshTokenRequest, db: Session = Depends(get_db)):
+    token_data = auth_service.decode_token(payload.refresh_token)
+
+    if token_data.get("type") != "refresh":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type.")
+
+    employee_id = token_data.get("sub")
+    device_id = payload.device_id
+
+    # Verify session and non-revocation
+    session = db.query(models.DeviceSession).filter(
+        models.DeviceSession.employee_id == employee_id,
+        models.DeviceSession.device_id == device_id,
+    ).first()
+
+    if not session or session.is_revoked:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Device session has been revoked.")
+
+    employee = db.query(models.AuthorizedEmployee).filter(
+        models.AuthorizedEmployee.id == employee_id,
+        models.AuthorizedEmployee.is_active == True,
+    ).first()
+
+    if not employee:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Employee has been deactivated.")
+
+    # Re-issue rotated tokens
+    claims = {
+        "sub": employee.id,
+        "email": employee.email,
+        "role": employee.role,
+        "device_id": device_id,
+    }
+    new_access = auth_service.create_access_token(claims)
+    new_refresh = auth_service.create_refresh_token(claims)
+
+    session.refresh_token = hashlib.sha256(new_refresh.encode()).hexdigest()
+    session.last_seen_at = datetime.datetime.utcnow()
+    db.commit()
+
+    assigned_branches = []
+    try:
+        assigned_branches = json.loads(employee.assigned_branches)
+    except Exception:
+        pass
+
+    return schemas.TokenResponse(
+        access_token=new_access,
+        refresh_token=new_refresh,
+        token_type="bearer",
+        employee=schemas.EmployeeResponse(
+            id=employee.id,
+            email=employee.email,
+            name=employee.name,
+            role=employee.role,
+            assigned_branches=assigned_branches,
+            is_active=employee.is_active,
+        ),
+    )
+
+@app.post("/auth/revoke-device")
+def revoke_device(payload: schemas.RevokeDeviceRequest, db: Session = Depends(get_db)):
+    query = db.query(models.DeviceSession).filter(models.DeviceSession.device_id == payload.device_id)
+    if payload.employee_id:
+        query = query.filter(models.DeviceSession.employee_id == payload.employee_id)
+
+    sessions = query.all()
+    if not sessions:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No matching device session found.")
+
+    for s in sessions:
+        s.is_revoked = True
+
+    db.commit()
+    return {"message": f"Successfully revoked {len(sessions)} device session(s)."}
+
+@app.get("/auth/status")
+def auth_status(auth_context: dict = Depends(auth_service.get_current_employee_and_session)):
+    employee = auth_context["employee"]
+    return {
+        "status": "authenticated",
+        "employee_id": employee.id,
+        "email": employee.email,
+        "name": employee.name,
+        "role": employee.role,
+        "assigned_branches": auth_context["assigned_branches"],
+    }
+
+@app.get("/auth/employees", response_model=List[schemas.EmployeeResponse])
+def list_authorized_employees(db: Session = Depends(get_db)):
+    employees = db.query(models.AuthorizedEmployee).all()
+    results = []
+    for emp in employees:
+        branches = []
+        try:
+            branches = json.loads(emp.assigned_branches)
+        except Exception:
+            pass
+        results.append(schemas.EmployeeResponse(
+            id=emp.id,
+            email=emp.email,
+            name=emp.name,
+            role=emp.role,
+            assigned_branches=branches,
+            is_active=emp.is_active,
+        ))
+    return results
+
+@app.post("/auth/employees", response_model=schemas.EmployeeResponse)
+def add_authorized_employee(payload: schemas.EmployeeCreate, db: Session = Depends(get_db)):
+    clean_email = payload.email.lower().strip()
+    existing = db.query(models.AuthorizedEmployee).filter(
+        models.AuthorizedEmployee.email == clean_email
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Employee with this email already exists.")
+
+    emp_id = str(uuid.uuid4())
+    new_emp = models.AuthorizedEmployee(
+        id=emp_id,
+        email=clean_email,
+        name=payload.name,
+        role=payload.role or "officer",
+        assigned_branches=json.dumps(payload.assigned_branches or []),
+        is_active=True,
+    )
+    db.add(new_emp)
+    db.commit()
+    db.refresh(new_emp)
+
+    return schemas.EmployeeResponse(
+        id=new_emp.id,
+        email=new_emp.email,
+        name=new_emp.name,
+        role=new_emp.role,
+        assigned_branches=payload.assigned_branches or [],
+        is_active=new_emp.is_active,
+    )
 
 # --- Branch/Office Endpoints ---
 @app.get("/offices/", response_model=List[schemas.Office])

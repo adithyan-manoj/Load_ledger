@@ -49,3 +49,40 @@ class MonthlyRecovery(MonthlyRecoveryBase):
 
     class Config:
         from_attributes = True
+
+# --- Authentication & Identity Schemas ---
+class GoogleLoginRequest(BaseModel):
+    id_token: str
+    device_id: str
+    device_name: Optional[str] = "Mobile Client"
+
+class EmployeeResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+    assigned_branches: List[str]
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    employee: EmployeeResponse
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+    device_id: str
+
+class RevokeDeviceRequest(BaseModel):
+    device_id: str
+    employee_id: Optional[str] = None
+
+class EmployeeCreate(BaseModel):
+    email: str
+    name: str
+    role: Optional[str] = "officer"
+    assigned_branches: Optional[List[str]] = []

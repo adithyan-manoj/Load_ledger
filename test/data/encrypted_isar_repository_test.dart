@@ -218,11 +218,12 @@ void main() {
       );
       expect(recovery, isNotNull);
 
-      // 1% interest on 100,000 = 1,000.0
-      expect(recovery!.interest, 1000.0);
-      // Principal due = 5,000 - 1,000 = 4,000.0
-      expect(recovery.principalDue, 4000.0);
-      expect(recovery.totalRecovered, 5000.0);
+      // Principal Due = 5,000.0
+      // Reduced Outstanding = 100,000 - 5,000 = 95,000.0
+      // 1% interest on 95,000 = 950.0
+      expect(recovery!.interest, 950.0);
+      expect(recovery.principalDue, 5000.0);
+      expect(recovery.totalRecovered, 5950.0);
 
       // 3. Update recovery figures and ensure re-encryption
       await recoveryRepo.updateRecoveryAmounts(

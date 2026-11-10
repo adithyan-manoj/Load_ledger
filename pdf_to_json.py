@@ -73,20 +73,25 @@ for filename in os.listdir(pdf_dir):
                     
                     ac_lines = (row[2] or '').split('\n')
                     pos_lines = (row[3] or '').split('\n')
+                    pdue_lines = (row[4] or '').split('\n') if len(row) > 4 else []
                     emi_lines = (row[5] or '').split('\n') if len(row) > 5 else []
                     
-                    num_loans = max(len(ac_lines), len(pos_lines), len(emi_lines), 1)
+                    num_loans = max(len(ac_lines), len(pos_lines), len(pdue_lines), len(emi_lines), 1)
                     
                     for i in range(num_loans):
                         ac = ac_lines[i].strip() if i < len(ac_lines) and ac_lines[i].strip() else f"/25-26-{i}"
                         pos = parse_float(pos_lines[i]) if i < len(pos_lines) else 0.0
+                        pdue = parse_float(pdue_lines[i]) if i < len(pdue_lines) else 0.0
                         emi = parse_float(emi_lines[i]) if i < len(emi_lines) else 0.0
+                        
+                        # Base installment is the fixed Principal Due installment
+                        base_installment = pdue if pdue > 0 else emi
                         
                         records.append({
                             'member_no': member_no,
                             'name': name,
                             'account_no': ac,
-                            'base_emi': emi,
+                            'base_emi': base_installment,
                             'principal_os': pos
                         })
 

@@ -102,11 +102,12 @@ void main() {
     // 5. Query draft from Isar and verify financial calculation
     final draft = await recoveryRepo.getRecoveryByLoanAndPeriod(loan.id, 5, 2026);
     expect(draft, isNotNull);
-    // 1% of 100,000 = 1,000.0
-    expect(draft!.interest, 1000.0);
-    // Principal Due = 5,000 - 1,000 = 4,000.0
-    expect(draft.principalDue, 4000.0);
-    expect(draft.totalRecovered, 5000.0);
+    // Principal Due = 5,000.0
+    // Reduced Outstanding = 100,000 - 5,000 = 95,000.0
+    // 1% of 95,000 = 950.0
+    expect(draft!.interest, 950.0);
+    expect(draft.principalDue, 5000.0);
+    expect(draft.totalRecovered, 5950.0);
 
     // 6. Adjust draft line items in Isar
     final adjusted = await recoveryEngine.adjustRecoveryDraft(
@@ -116,11 +117,11 @@ void main() {
     );
     expect(adjusted.penalInterest, 150.0);
     expect(adjusted.otherCharges, 50.0);
-    expect(adjusted.totalRecovered, 5200.0);
+    expect(adjusted.totalRecovered, 6150.0);
 
     // Verify persistence of adjusted draft in Isar
     final reFetched = await recoveryRepo.getRecoveryById(draft.id);
-    expect(reFetched!.totalRecovered, 5200.0);
+    expect(reFetched!.totalRecovered, 6150.0);
     expect(reFetched.isReviewed, true);
 
     // 7. Verify Cascade Deletion in Isar

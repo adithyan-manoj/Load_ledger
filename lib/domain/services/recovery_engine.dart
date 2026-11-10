@@ -84,15 +84,18 @@ class RecoveryEngine {
         continue;
       }
 
-      // Calculation logic
-      double interest = roundCurrency(loan.principalOutstanding * 0.01);
-      double principalDue = roundCurrency(loan.baseEmiAmount - interest);
-
-      // Edge case guard (where base EMI is very low or 0)
-      if (principalDue < 0) {
-        principalDue = loan.baseEmiAmount;
-        interest = 0.0;
+      // Calculation logic:
+      // 1. Principal due is fixed as the constant base principal installment (capped at remaining balance)
+      double principalDue = loan.baseEmiAmount;
+      if (principalDue > loan.principalOutstanding) {
+        principalDue = loan.principalOutstanding;
       }
+
+      // 2. Reduce principal due from principal outstanding to determine new balance
+      final double reducedOutstanding = loan.principalOutstanding - principalDue;
+
+      // 3. Calculate 12% annual interest (1% monthly) on the reduced balance
+      final double interest = roundCurrency(reducedOutstanding * 0.01);
 
       final draft = MonthlyRecovery(
         id: _uuid.v4(),

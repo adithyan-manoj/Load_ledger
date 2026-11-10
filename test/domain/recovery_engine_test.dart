@@ -24,8 +24,8 @@ void main() {
       );
     });
 
-    test('calculates 1% interest and decomposes principal correctly', () async {
-      // 1. Setup sample customer and loan: Outstanding 50,000, Base EMI 5,000
+    test('reduces principal due from outstanding and calculates 12% interest on new amount', () async {
+      // 1. Setup sample customer and loan: Outstanding 50,000, Base Principal Due 5,000
       await customerRepo.saveCustomer(const Customer(
         id: 'c1',
         officeId: 'o1',
@@ -51,17 +51,19 @@ void main() {
       expect(recoveries.length, 1);
 
       final recovery = recoveries.first;
-      // 1% of 50,000 = 500.0
-      expect(recovery.interest, 500.0);
-      // Principal Due = 5,000 - 500 = 4,500.0
-      expect(recovery.principalDue, 4500.0);
+      // Principal Due remains constant = 5,000.0
+      expect(recovery.principalDue, 5000.0);
+      // Reduced Balance = 50,000 - 5,000 = 45,000.0
+      // 12% p.a. (1% monthly) on 45,000 = 450.0
+      expect(recovery.interest, 450.0);
       expect(recovery.penalInterest, 0.0);
       expect(recovery.otherCharges, 0.0);
-      expect(recovery.totalRecovered, 5000.0);
+      // Total monthly recovery demand = Principal Due + Interest = 5,450.0
+      expect(recovery.totalRecovered, 5450.0);
     });
 
-    test('handles edge case where base EMI is less than interest accrued', () async {
-      // Loan with Outstanding 100,000 (1% is 1,000), but agreed EMI is only 500
+    test('handles edge case where principal outstanding is less than base installment', () async {
+      // Terminal loan installment: Outstanding is only 3,200, but regular installment is 5,000
       await customerRepo.saveCustomer(const Customer(
         id: 'c2',
         officeId: 'o1',
@@ -73,18 +75,19 @@ void main() {
         id: 'l2',
         customerId: 'c2',
         accountNo: '20/25-26',
-        principalOutstanding: 100000.0,
-        baseEmiAmount: 500.0,
+        principalOutstanding: 3200.0,
+        baseEmiAmount: 5000.0,
       ));
 
       final result = await engine.generateDrafts(month: 5, year: 2026);
       expect(result.createdCount, 1);
 
       final recovery = (await recoveryRepo.getRecoveries(month: 5, year: 2026)).first;
-      // Guard condition: if principalDue < 0 => principalDue = baseEmi (500), interest = 0.0
-      expect(recovery.principalDue, 500.0);
+      // Capped to remaining balance: 3,200.0
+      expect(recovery.principalDue, 3200.0);
+      // Reduced balance: 3,200 - 3,200 = 0.0 => interest = 0.0
       expect(recovery.interest, 0.0);
-      expect(recovery.totalRecovered, 500.0);
+      expect(recovery.totalRecovered, 3200.0);
     });
 
     test('guarantees idempotency (does not duplicate existing monthly drafts)', () async {

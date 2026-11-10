@@ -364,14 +364,15 @@ def generate_drafts(month: int, year: int, office_id: str = None, db: Session = 
         ).first()
         
         if not existing:
-            # Calculation logic: Interest = 1% of Outstanding, Principal = Base EMI - Interest
-            interest = round(loan.principal_outstanding * 0.01, 2)
-            principal_due = round(loan.base_emi_amount - interest, 2)
+            # Calculation logic:
+            # 1. Principal due is fixed constant installment, capped at remaining balance
+            principal_due = min(loan.base_emi_amount, loan.principal_outstanding)
             
-            # Ensure principal isn't negative (edge case where EMI is very low)
-            if principal_due < 0:
-                principal_due = loan.base_emi_amount
-                interest = 0.0
+            # 2. Reduce principal due from outstanding balance to determine new balance
+            reduced_outstanding = loan.principal_outstanding - principal_due
+            
+            # 3. Calculate 12% p.a. interest (1% monthly) on the reduced balance
+            interest = round(reduced_outstanding * 0.01, 2)
 
             new_draft = models.MonthlyRecovery(
                 id=str(uuid.uuid4()),

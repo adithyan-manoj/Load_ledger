@@ -1,10 +1,66 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
-import '../models/office.dart';
-import '../models/customer.dart';
-import '../models/loan.dart';
-import '../models/monthly_recovery.dart';
-import 'api_service.dart';
+import '../domain/models/office.dart';
+import '../domain/models/customer.dart';
+import '../domain/models/loan.dart';
+import '../domain/models/monthly_recovery.dart';
+import '../domain/repositories/i_office_repository.dart';
+import '../domain/repositories/i_customer_repository.dart';
+import '../domain/repositories/i_loan_repository.dart';
+import '../domain/repositories/i_recovery_repository.dart';
+import '../domain/services/loan_ledger_service.dart';
+import '../domain/services/recovery_engine.dart';
+import 'local/isar_database_service.dart';
+import 'repositories/isar_office_repository.dart';
+import 'repositories/isar_customer_repository.dart';
+import 'repositories/isar_loan_repository.dart';
+import 'repositories/isar_recovery_repository.dart';
+
+// ==========================================
+// Database & Repository Providers
+// ==========================================
+
+final isarDatabaseServiceProvider = Provider<IsarDatabaseService>((ref) {
+  final service = IsarDatabaseService();
+  ref.onDispose(() => service.close());
+  return service;
+});
+
+final officeRepositoryProvider = Provider<IOfficeRepository>((ref) {
+  return IsarOfficeRepository(dbService: ref.watch(isarDatabaseServiceProvider));
+});
+
+final customerRepositoryProvider = Provider<ICustomerRepository>((ref) {
+  return IsarCustomerRepository(dbService: ref.watch(isarDatabaseServiceProvider));
+});
+
+final loanRepositoryProvider = Provider<ILoanRepository>((ref) {
+  return IsarLoanRepository(dbService: ref.watch(isarDatabaseServiceProvider));
+});
+
+final recoveryRepositoryProvider = Provider<IRecoveryRepository>((ref) {
+  return IsarRecoveryRepository(dbService: ref.watch(isarDatabaseServiceProvider));
+});
+
+final loanLedgerServiceProvider = Provider<LoanLedgerService>((ref) {
+  return LoanLedgerService(
+    officeRepo: ref.watch(officeRepositoryProvider),
+    customerRepo: ref.watch(customerRepositoryProvider),
+    loanRepo: ref.watch(loanRepositoryProvider),
+    recoveryRepo: ref.watch(recoveryRepositoryProvider),
+  );
+});
+
+final recoveryEngineProvider = Provider<RecoveryEngine>((ref) {
+  return RecoveryEngine(
+    loanRepository: ref.watch(loanRepositoryProvider),
+    customerRepository: ref.watch(customerRepositoryProvider),
+    recoveryRepository: ref.watch(recoveryRepositoryProvider),
+  );
+});
+
+// ==========================================
+// Central App State & Notifier
+// ==========================================
 
 class AppState {
   final List<Office> offices;
@@ -12,7 +68,7 @@ class AppState {
   final List<Loan> loans;
   final List<MonthlyRecovery> monthlyRecoveries;
 
-  AppState({
+  const AppState({
     required this.offices,
     required this.customers,
     required this.loans,
@@ -37,104 +93,112 @@ class AppState {
 class AppStateNotifier extends AsyncNotifier<AppState> {
   @override
   Future<AppState> build() async {
-    final api = ref.watch(apiServiceProvider);
-    
-    // Fetch all core data in parallel for stability and speed
-    try {
-      final results = await Future.wait([
-        api.getOffices(),
-        api.getCustomers(),
-        api.getLoans(),
-        api.getRecoveries(),
-      ]);
+    final officeRepo = ref.watch(officeRepositoryProvider);
+    final customerRepo = ref.watch(customerRepositoryProvider);
+    final loanRepo = ref.watch(loanRepositoryProvider);
+    final recoveryRepo = ref.watch(recoveryRepositoryProvider);
 
-      return AppState(
-        offices: results[0] as List<Office>,
-        customers: results[1] as List<Customer>,
-        loans: results[2] as List<Loan>,
-        monthlyRecoveries: results[3] as List<MonthlyRecovery>,
-      );
-    } catch (e) {
-      // Re-throw so Riverpod handles the error state correctly
-      rethrow;
-    }
+    // Fetch all core data in parallel directly from local Isar database
+    final results = await Future.wait([
+      officeRepo.getAllOffices(),
+      customerRepo.getAllCustomers(),
+      loanRepo.getAllLoans(),
+      recoveryRepo.getRecoveries(),
+    ]);
+
+    return AppState(
+      offices: results[0] as List<Office>,
+      customers: results[1] as List<Customer>,
+      loans: results[2] as List<Loan>,
+      monthlyRecoveries: results[3] as List<MonthlyRecovery>,
+    );
   }
 
   Future<void> addBranch(String name) async {
     if (name.trim().isEmpty) return;
-    
-    final newOffice = Office(id: const Uuid().v4(), branchId: 'b1', name: name);
-    final api = ref.read(apiServiceProvider);
-    final savedOffice = await api.createOffice(newOffice);
+
+    final ledgerService = ref.read(loanLedgerServiceProvider);
+    final savedOffice = await ledgerService.createOffice(name: name);
 
     state = state.whenData((current) => current.copyWith(
-      offices: [...current.offices, savedOffice]
-    ));
+          offices: [...current.offices, savedOffice],
+        ));
   }
 
   Future<void> deleteBranch(String officeId) async {
-    final api = ref.read(apiServiceProvider);
-    await api.deleteOffice(officeId);
-    state = state.whenData((current) => current.copyWith(
-      offices: current.offices.where((o) => o.id != officeId).toList()
-    ));
+    final ledgerService = ref.read(loanLedgerServiceProvider);
+    await ledgerService.deleteOfficeCascade(officeId);
+
+    // Refresh state after cascade deletion
+    ref.invalidateSelf();
   }
 
   Future<void> addEmployee(String branchId, String name, String memberNo) async {
     if (name.trim().isEmpty || memberNo.trim().isEmpty) return;
-    
-    final customer = Customer(id: const Uuid().v4(), officeId: branchId, memberNo: memberNo, name: name);
-    final api = ref.read(apiServiceProvider);
-    final savedCustomer = await api.createCustomer(customer);
+
+    final ledgerService = ref.read(loanLedgerServiceProvider);
+    final savedCustomer = await ledgerService.registerCustomer(
+      officeId: branchId,
+      memberNo: memberNo,
+      name: name,
+    );
 
     state = state.whenData((current) => current.copyWith(
-      customers: [...current.customers, savedCustomer]
-    ));
+          customers: [...current.customers, savedCustomer],
+        ));
   }
 
   Future<void> deleteEmployee(String customerId) async {
-    final api = ref.read(apiServiceProvider);
-    await api.deleteCustomer(customerId);
-    state = state.whenData((current) => current.copyWith(
-      customers: current.customers.where((c) => c.id != customerId).toList()
-    ));
+    final ledgerService = ref.read(loanLedgerServiceProvider);
+    await ledgerService.deleteCustomerCascade(customerId);
+
+    // Refresh state after cascade deletion
+    ref.invalidateSelf();
   }
 
-  Future<void> addLoan(String customerId, String accountNo, double principalOS, double baseEmi) async {
+  Future<void> addLoan(
+    String customerId,
+    String accountNo,
+    double principalOS,
+    double baseEmi,
+  ) async {
     if (accountNo.trim().isEmpty) return;
-    
-    final loan = Loan(
-      id: const Uuid().v4(), customerId: customerId, accountNo: accountNo, 
-      principalOutstanding: principalOS, baseEmiAmount: baseEmi
+
+    final ledgerService = ref.read(loanLedgerServiceProvider);
+    final savedLoan = await ledgerService.initializeLoan(
+      customerId: customerId,
+      accountNo: accountNo,
+      principalOutstanding: principalOS,
+      baseEmiAmount: baseEmi,
     );
-    
-    final api = ref.read(apiServiceProvider);
-    final savedLoan = await api.createLoan(loan);
 
     state = state.whenData((current) => current.copyWith(
-      loans: [...current.loans, savedLoan]
-    ));
+          loans: [...current.loans, savedLoan],
+        ));
   }
 
   Future<void> deleteLoan(String loanId) async {
-    final api = ref.read(apiServiceProvider);
-    await api.deleteLoan(loanId);
-    state = state.whenData((current) => current.copyWith(
-      loans: current.loans.where((l) => l.id != loanId).toList()
-    ));
+    final ledgerService = ref.read(loanLedgerServiceProvider);
+    await ledgerService.deleteLoanCascade(loanId);
+
+    // Refresh state after cascade deletion
+    ref.invalidateSelf();
   }
 
   Future<void> updateDraft(
-    String draftId, 
-    {double? principalDue, double? interest, double? penalInt, double? others}
-  ) async {
-    final api = ref.read(apiServiceProvider);
-    final updatedDraft = await api.updateRecovery(
-      draftId, 
-      principalDue: principalDue, 
-      interest: interest, 
-      penalInt: penalInt, 
-      others: others
+    String draftId, {
+    double? principalDue,
+    double? interest,
+    double? penalInt,
+    double? others,
+  }) async {
+    final recoveryEngine = ref.read(recoveryEngineProvider);
+    final updatedDraft = await recoveryEngine.adjustRecoveryDraft(
+      recoveryId: draftId,
+      principalDue: principalDue,
+      interest: interest,
+      penalInterest: penalInt,
+      otherCharges: others,
     );
 
     state = state.whenData((current) {
@@ -149,14 +213,22 @@ class AppStateNotifier extends AsyncNotifier<AppState> {
   }
 
   Future<String> generateDrafts(int month, int year, {required String branchId}) async {
-    final api = ref.read(apiServiceProvider);
-    final msg = await api.generateDrafts(month, year);
-    
-    // Refresh recoveries
-    final recoveries = await api.getRecoveries();
-    state = state.whenData((current) => current.copyWith(monthlyRecoveries: recoveries));
-    return msg;
+    final recoveryEngine = ref.read(recoveryEngineProvider);
+    final recoveryRepo = ref.read(recoveryRepositoryProvider);
+
+    final result = await recoveryEngine.generateDrafts(
+      month: month,
+      year: year,
+      officeId: branchId,
+    );
+
+    // Refresh local recoveries in state
+    final allRecoveries = await recoveryRepo.getRecoveries();
+    state = state.whenData((current) => current.copyWith(monthlyRecoveries: allRecoveries));
+
+    return result.message;
   }
 }
 
-final appStateProvider = AsyncNotifierProvider<AppStateNotifier, AppState>(AppStateNotifier.new);
+final appStateProvider =
+    AsyncNotifierProvider<AppStateNotifier, AppState>(AppStateNotifier.new);

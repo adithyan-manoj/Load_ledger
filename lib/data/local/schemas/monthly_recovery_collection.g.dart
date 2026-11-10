@@ -19,10 +19,10 @@ const MonthlyRecoveryCollectionSchema = CollectionSchema(
   id: -6742395801218318858,
   properties: {
     r'id': PropertySchema(id: 0, name: r'id', type: IsarType.string),
-    r'interest': PropertySchema(
+    r'interestEncrypted': PropertySchema(
       id: 1,
-      name: r'interest',
-      type: IsarType.double,
+      name: r'interestEncrypted',
+      type: IsarType.string,
     ),
     r'isReviewed': PropertySchema(
       id: 2,
@@ -31,20 +31,20 @@ const MonthlyRecoveryCollectionSchema = CollectionSchema(
     ),
     r'loanId': PropertySchema(id: 3, name: r'loanId', type: IsarType.string),
     r'month': PropertySchema(id: 4, name: r'month', type: IsarType.long),
-    r'otherCharges': PropertySchema(
+    r'otherChargesEncrypted': PropertySchema(
       id: 5,
-      name: r'otherCharges',
-      type: IsarType.double,
+      name: r'otherChargesEncrypted',
+      type: IsarType.string,
     ),
-    r'penalInterest': PropertySchema(
+    r'penalInterestEncrypted': PropertySchema(
       id: 6,
-      name: r'penalInterest',
-      type: IsarType.double,
+      name: r'penalInterestEncrypted',
+      type: IsarType.string,
     ),
-    r'principalDue': PropertySchema(
+    r'principalDueEncrypted': PropertySchema(
       id: 7,
-      name: r'principalDue',
-      type: IsarType.double,
+      name: r'principalDueEncrypted',
+      type: IsarType.string,
     ),
     r'year': PropertySchema(id: 8, name: r'year', type: IsarType.long),
   },
@@ -126,7 +126,11 @@ int _monthlyRecoveryCollectionEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.id.length * 3;
+  bytesCount += 3 + object.interestEncrypted.length * 3;
   bytesCount += 3 + object.loanId.length * 3;
+  bytesCount += 3 + object.otherChargesEncrypted.length * 3;
+  bytesCount += 3 + object.penalInterestEncrypted.length * 3;
+  bytesCount += 3 + object.principalDueEncrypted.length * 3;
   return bytesCount;
 }
 
@@ -137,13 +141,13 @@ void _monthlyRecoveryCollectionSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeString(offsets[0], object.id);
-  writer.writeDouble(offsets[1], object.interest);
+  writer.writeString(offsets[1], object.interestEncrypted);
   writer.writeBool(offsets[2], object.isReviewed);
   writer.writeString(offsets[3], object.loanId);
   writer.writeLong(offsets[4], object.month);
-  writer.writeDouble(offsets[5], object.otherCharges);
-  writer.writeDouble(offsets[6], object.penalInterest);
-  writer.writeDouble(offsets[7], object.principalDue);
+  writer.writeString(offsets[5], object.otherChargesEncrypted);
+  writer.writeString(offsets[6], object.penalInterestEncrypted);
+  writer.writeString(offsets[7], object.principalDueEncrypted);
   writer.writeLong(offsets[8], object.year);
 }
 
@@ -155,14 +159,14 @@ MonthlyRecoveryCollection _monthlyRecoveryCollectionDeserialize(
 ) {
   final object = MonthlyRecoveryCollection();
   object.id = reader.readString(offsets[0]);
-  object.interest = reader.readDouble(offsets[1]);
+  object.interestEncrypted = reader.readString(offsets[1]);
   object.isReviewed = reader.readBool(offsets[2]);
   object.isarId = id;
   object.loanId = reader.readString(offsets[3]);
   object.month = reader.readLong(offsets[4]);
-  object.otherCharges = reader.readDouble(offsets[5]);
-  object.penalInterest = reader.readDouble(offsets[6]);
-  object.principalDue = reader.readDouble(offsets[7]);
+  object.otherChargesEncrypted = reader.readString(offsets[5]);
+  object.penalInterestEncrypted = reader.readString(offsets[6]);
+  object.principalDueEncrypted = reader.readString(offsets[7]);
   object.year = reader.readLong(offsets[8]);
   return object;
 }
@@ -177,7 +181,7 @@ P _monthlyRecoveryCollectionDeserializeProp<P>(
     case 0:
       return (reader.readString(offset)) as P;
     case 1:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 2:
       return (reader.readBool(offset)) as P;
     case 3:
@@ -185,11 +189,11 @@ P _monthlyRecoveryCollectionDeserializeProp<P>(
     case 4:
       return (reader.readLong(offset)) as P;
     case 5:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 6:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 7:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 8:
       return (reader.readLong(offset)) as P;
     default:
@@ -1225,14 +1229,13 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  interestEqualTo(double value, {double epsilon = Query.epsilon}) {
+  interestEncryptedEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.equalTo(
-          property: r'interest',
+          property: r'interestEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1243,19 +1246,18 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  interestGreaterThan(
-    double value, {
+  interestEncryptedGreaterThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(
           include: include,
-          property: r'interest',
+          property: r'interestEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1266,19 +1268,18 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  interestLessThan(
-    double value, {
+  interestEncryptedLessThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.lessThan(
           include: include,
-          property: r'interest',
+          property: r'interestEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1289,24 +1290,117 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  interestBetween(
-    double lower,
-    double upper, {
+  interestEncryptedBetween(
+    String lower,
+    String upper, {
     bool includeLower = true,
     bool includeUpper = true,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.between(
-          property: r'interest',
+          property: r'interestEncrypted',
           lower: lower,
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  interestEncryptedStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'interestEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  interestEncryptedEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'interestEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  interestEncryptedContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'interestEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  interestEncryptedMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'interestEncrypted',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  interestEncryptedIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'interestEncrypted', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  interestEncryptedIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'interestEncrypted', value: ''),
       );
     });
   }
@@ -1652,14 +1746,13 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  otherChargesEqualTo(double value, {double epsilon = Query.epsilon}) {
+  otherChargesEncryptedEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.equalTo(
-          property: r'otherCharges',
+          property: r'otherChargesEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1670,19 +1763,18 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  otherChargesGreaterThan(
-    double value, {
+  otherChargesEncryptedGreaterThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(
           include: include,
-          property: r'otherCharges',
+          property: r'otherChargesEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1693,19 +1785,18 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  otherChargesLessThan(
-    double value, {
+  otherChargesEncryptedLessThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.lessThan(
           include: include,
-          property: r'otherCharges',
+          property: r'otherChargesEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1716,23 +1807,22 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  otherChargesBetween(
-    double lower,
-    double upper, {
+  otherChargesEncryptedBetween(
+    String lower,
+    String upper, {
     bool includeLower = true,
     bool includeUpper = true,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.between(
-          property: r'otherCharges',
+          property: r'otherChargesEncrypted',
           lower: lower,
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1743,14 +1833,110 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  penalInterestEqualTo(double value, {double epsilon = Query.epsilon}) {
+  otherChargesEncryptedStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'otherChargesEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  otherChargesEncryptedEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'otherChargesEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  otherChargesEncryptedContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'otherChargesEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  otherChargesEncryptedMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'otherChargesEncrypted',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  otherChargesEncryptedIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'otherChargesEncrypted', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  otherChargesEncryptedIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          property: r'otherChargesEncrypted',
+          value: '',
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  penalInterestEncryptedEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.equalTo(
-          property: r'penalInterest',
+          property: r'penalInterestEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1761,19 +1947,18 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  penalInterestGreaterThan(
-    double value, {
+  penalInterestEncryptedGreaterThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(
           include: include,
-          property: r'penalInterest',
+          property: r'penalInterestEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1784,19 +1969,18 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  penalInterestLessThan(
-    double value, {
+  penalInterestEncryptedLessThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.lessThan(
           include: include,
-          property: r'penalInterest',
+          property: r'penalInterestEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1807,23 +1991,22 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  penalInterestBetween(
-    double lower,
-    double upper, {
+  penalInterestEncryptedBetween(
+    String lower,
+    String upper, {
     bool includeLower = true,
     bool includeUpper = true,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.between(
-          property: r'penalInterest',
+          property: r'penalInterestEncrypted',
           lower: lower,
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1834,14 +2017,110 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  principalDueEqualTo(double value, {double epsilon = Query.epsilon}) {
+  penalInterestEncryptedStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'penalInterestEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  penalInterestEncryptedEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'penalInterestEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  penalInterestEncryptedContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'penalInterestEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  penalInterestEncryptedMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'penalInterestEncrypted',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  penalInterestEncryptedIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'penalInterestEncrypted', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  penalInterestEncryptedIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          property: r'penalInterestEncrypted',
+          value: '',
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  principalDueEncryptedEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.equalTo(
-          property: r'principalDue',
+          property: r'principalDueEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1852,19 +2131,18 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  principalDueGreaterThan(
-    double value, {
+  principalDueEncryptedGreaterThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(
           include: include,
-          property: r'principalDue',
+          property: r'principalDueEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1875,19 +2153,18 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  principalDueLessThan(
-    double value, {
+  principalDueEncryptedLessThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.lessThan(
           include: include,
-          property: r'principalDue',
+          property: r'principalDueEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -1898,23 +2175,119 @@ extension MonthlyRecoveryCollectionQueryFilter
     MonthlyRecoveryCollection,
     QAfterFilterCondition
   >
-  principalDueBetween(
-    double lower,
-    double upper, {
+  principalDueEncryptedBetween(
+    String lower,
+    String upper, {
     bool includeLower = true,
     bool includeUpper = true,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.between(
-          property: r'principalDue',
+          property: r'principalDueEncrypted',
           lower: lower,
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
 
-          epsilon: epsilon,
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  principalDueEncryptedStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'principalDueEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  principalDueEncryptedEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'principalDueEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  principalDueEncryptedContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'principalDueEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  principalDueEncryptedMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'principalDueEncrypted',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  principalDueEncryptedIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'principalDueEncrypted', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<
+    MonthlyRecoveryCollection,
+    MonthlyRecoveryCollection,
+    QAfterFilterCondition
+  >
+  principalDueEncryptedIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          property: r'principalDueEncrypted',
+          value: '',
         ),
       );
     });
@@ -2042,9 +2415,9 @@ extension MonthlyRecoveryCollectionQuerySortBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  sortByInterest() {
+  sortByInterestEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'interest', Sort.asc);
+      return query.addSortBy(r'interestEncrypted', Sort.asc);
     });
   }
 
@@ -2053,9 +2426,9 @@ extension MonthlyRecoveryCollectionQuerySortBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  sortByInterestDesc() {
+  sortByInterestEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'interest', Sort.desc);
+      return query.addSortBy(r'interestEncrypted', Sort.desc);
     });
   }
 
@@ -2130,9 +2503,9 @@ extension MonthlyRecoveryCollectionQuerySortBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  sortByOtherCharges() {
+  sortByOtherChargesEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'otherCharges', Sort.asc);
+      return query.addSortBy(r'otherChargesEncrypted', Sort.asc);
     });
   }
 
@@ -2141,9 +2514,9 @@ extension MonthlyRecoveryCollectionQuerySortBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  sortByOtherChargesDesc() {
+  sortByOtherChargesEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'otherCharges', Sort.desc);
+      return query.addSortBy(r'otherChargesEncrypted', Sort.desc);
     });
   }
 
@@ -2152,9 +2525,9 @@ extension MonthlyRecoveryCollectionQuerySortBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  sortByPenalInterest() {
+  sortByPenalInterestEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'penalInterest', Sort.asc);
+      return query.addSortBy(r'penalInterestEncrypted', Sort.asc);
     });
   }
 
@@ -2163,9 +2536,9 @@ extension MonthlyRecoveryCollectionQuerySortBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  sortByPenalInterestDesc() {
+  sortByPenalInterestEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'penalInterest', Sort.desc);
+      return query.addSortBy(r'penalInterestEncrypted', Sort.desc);
     });
   }
 
@@ -2174,9 +2547,9 @@ extension MonthlyRecoveryCollectionQuerySortBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  sortByPrincipalDue() {
+  sortByPrincipalDueEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'principalDue', Sort.asc);
+      return query.addSortBy(r'principalDueEncrypted', Sort.asc);
     });
   }
 
@@ -2185,9 +2558,9 @@ extension MonthlyRecoveryCollectionQuerySortBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  sortByPrincipalDueDesc() {
+  sortByPrincipalDueEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'principalDue', Sort.desc);
+      return query.addSortBy(r'principalDueEncrypted', Sort.desc);
     });
   }
 
@@ -2248,9 +2621,9 @@ extension MonthlyRecoveryCollectionQuerySortThenBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  thenByInterest() {
+  thenByInterestEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'interest', Sort.asc);
+      return query.addSortBy(r'interestEncrypted', Sort.asc);
     });
   }
 
@@ -2259,9 +2632,9 @@ extension MonthlyRecoveryCollectionQuerySortThenBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  thenByInterestDesc() {
+  thenByInterestEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'interest', Sort.desc);
+      return query.addSortBy(r'interestEncrypted', Sort.desc);
     });
   }
 
@@ -2358,9 +2731,9 @@ extension MonthlyRecoveryCollectionQuerySortThenBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  thenByOtherCharges() {
+  thenByOtherChargesEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'otherCharges', Sort.asc);
+      return query.addSortBy(r'otherChargesEncrypted', Sort.asc);
     });
   }
 
@@ -2369,9 +2742,9 @@ extension MonthlyRecoveryCollectionQuerySortThenBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  thenByOtherChargesDesc() {
+  thenByOtherChargesEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'otherCharges', Sort.desc);
+      return query.addSortBy(r'otherChargesEncrypted', Sort.desc);
     });
   }
 
@@ -2380,9 +2753,9 @@ extension MonthlyRecoveryCollectionQuerySortThenBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  thenByPenalInterest() {
+  thenByPenalInterestEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'penalInterest', Sort.asc);
+      return query.addSortBy(r'penalInterestEncrypted', Sort.asc);
     });
   }
 
@@ -2391,9 +2764,9 @@ extension MonthlyRecoveryCollectionQuerySortThenBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  thenByPenalInterestDesc() {
+  thenByPenalInterestEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'penalInterest', Sort.desc);
+      return query.addSortBy(r'penalInterestEncrypted', Sort.desc);
     });
   }
 
@@ -2402,9 +2775,9 @@ extension MonthlyRecoveryCollectionQuerySortThenBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  thenByPrincipalDue() {
+  thenByPrincipalDueEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'principalDue', Sort.asc);
+      return query.addSortBy(r'principalDueEncrypted', Sort.asc);
     });
   }
 
@@ -2413,9 +2786,9 @@ extension MonthlyRecoveryCollectionQuerySortThenBy
     MonthlyRecoveryCollection,
     QAfterSortBy
   >
-  thenByPrincipalDueDesc() {
+  thenByPrincipalDueEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'principalDue', Sort.desc);
+      return query.addSortBy(r'principalDueEncrypted', Sort.desc);
     });
   }
 
@@ -2457,9 +2830,12 @@ extension MonthlyRecoveryCollectionQueryWhereDistinct
   }
 
   QueryBuilder<MonthlyRecoveryCollection, MonthlyRecoveryCollection, QDistinct>
-  distinctByInterest() {
+  distinctByInterestEncrypted({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'interest');
+      return query.addDistinctBy(
+        r'interestEncrypted',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
@@ -2485,23 +2861,32 @@ extension MonthlyRecoveryCollectionQueryWhereDistinct
   }
 
   QueryBuilder<MonthlyRecoveryCollection, MonthlyRecoveryCollection, QDistinct>
-  distinctByOtherCharges() {
+  distinctByOtherChargesEncrypted({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'otherCharges');
+      return query.addDistinctBy(
+        r'otherChargesEncrypted',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
   QueryBuilder<MonthlyRecoveryCollection, MonthlyRecoveryCollection, QDistinct>
-  distinctByPenalInterest() {
+  distinctByPenalInterestEncrypted({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'penalInterest');
+      return query.addDistinctBy(
+        r'penalInterestEncrypted',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
   QueryBuilder<MonthlyRecoveryCollection, MonthlyRecoveryCollection, QDistinct>
-  distinctByPrincipalDue() {
+  distinctByPrincipalDueEncrypted({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'principalDue');
+      return query.addDistinctBy(
+        r'principalDueEncrypted',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
@@ -2534,10 +2919,10 @@ extension MonthlyRecoveryCollectionQueryProperty
     });
   }
 
-  QueryBuilder<MonthlyRecoveryCollection, double, QQueryOperations>
-  interestProperty() {
+  QueryBuilder<MonthlyRecoveryCollection, String, QQueryOperations>
+  interestEncryptedProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'interest');
+      return query.addPropertyName(r'interestEncrypted');
     });
   }
 
@@ -2562,24 +2947,24 @@ extension MonthlyRecoveryCollectionQueryProperty
     });
   }
 
-  QueryBuilder<MonthlyRecoveryCollection, double, QQueryOperations>
-  otherChargesProperty() {
+  QueryBuilder<MonthlyRecoveryCollection, String, QQueryOperations>
+  otherChargesEncryptedProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'otherCharges');
+      return query.addPropertyName(r'otherChargesEncrypted');
     });
   }
 
-  QueryBuilder<MonthlyRecoveryCollection, double, QQueryOperations>
-  penalInterestProperty() {
+  QueryBuilder<MonthlyRecoveryCollection, String, QQueryOperations>
+  penalInterestEncryptedProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'penalInterest');
+      return query.addPropertyName(r'penalInterestEncrypted');
     });
   }
 
-  QueryBuilder<MonthlyRecoveryCollection, double, QQueryOperations>
-  principalDueProperty() {
+  QueryBuilder<MonthlyRecoveryCollection, String, QQueryOperations>
+  principalDueEncryptedProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'principalDue');
+      return query.addPropertyName(r'principalDueEncrypted');
     });
   }
 

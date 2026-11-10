@@ -1,4 +1,5 @@
 import 'package:isar_community/isar.dart';
+import '../../../core/security/cipher_service.dart';
 import '../../../domain/models/customer.dart';
 
 part 'customer_collection.g.dart';
@@ -13,26 +14,28 @@ class CustomerCollection {
   @Index()
   late String officeId;
 
-  @Index()
   late String memberNo;
 
   late String name;
 
-  Customer toDomain() {
+  Customer toDomain([CipherService? cipher]) {
     return Customer(
       id: id,
       officeId: officeId,
-      memberNo: memberNo,
-      name: name,
+      memberNo: cipher?.decryptString(memberNo) ?? memberNo,
+      name: cipher?.decryptString(name) ?? name,
     );
   }
 
-  static CustomerCollection fromDomain(Customer customer) {
+  static CustomerCollection fromDomain(
+    Customer customer, [
+    CipherService? cipher,
+  ]) {
     return CustomerCollection()
       ..id = customer.id
       ..officeId = customer.officeId
-      ..memberNo = customer.memberNo
-      ..name = customer.name;
+      ..memberNo =
+          cipher?.encryptString(customer.memberNo) ?? customer.memberNo
+      ..name = cipher?.encryptString(customer.name) ?? customer.name;
   }
 }
-

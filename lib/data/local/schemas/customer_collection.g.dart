@@ -64,19 +64,6 @@ const CustomerCollectionSchema = CollectionSchema(
         ),
       ],
     ),
-    r'memberNo': IndexSchema(
-      id: 1700085768879374589,
-      name: r'memberNo',
-      unique: false,
-      replace: false,
-      properties: [
-        IndexPropertySchema(
-          name: r'memberNo',
-          type: IndexType.hash,
-          caseSensitive: true,
-        ),
-      ],
-    ),
   },
   links: {},
   embeddedSchemas: {},
@@ -400,58 +387,6 @@ extension CustomerCollectionQueryWhere
                 indexName: r'officeId',
                 lower: [],
                 upper: [officeId],
-                includeUpper: false,
-              ),
-            );
-      }
-    });
-  }
-
-  QueryBuilder<CustomerCollection, CustomerCollection, QAfterWhereClause>
-  memberNoEqualTo(String memberNo) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(
-        IndexWhereClause.equalTo(indexName: r'memberNo', value: [memberNo]),
-      );
-    });
-  }
-
-  QueryBuilder<CustomerCollection, CustomerCollection, QAfterWhereClause>
-  memberNoNotEqualTo(String memberNo) {
-    return QueryBuilder.apply(this, (query) {
-      if (query.whereSort == Sort.asc) {
-        return query
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'memberNo',
-                lower: [],
-                upper: [memberNo],
-                includeUpper: false,
-              ),
-            )
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'memberNo',
-                lower: [memberNo],
-                includeLower: false,
-                upper: [],
-              ),
-            );
-      } else {
-        return query
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'memberNo',
-                lower: [memberNo],
-                includeLower: false,
-                upper: [],
-              ),
-            )
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'memberNo',
-                lower: [],
-                upper: [memberNo],
                 includeUpper: false,
               ),
             );

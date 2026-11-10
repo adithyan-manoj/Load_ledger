@@ -1,4 +1,5 @@
 import 'package:isar_community/isar.dart';
+import '../../../core/security/cipher_service.dart';
 import '../../../domain/models/monthly_recovery.dart';
 
 part 'monthly_recovery_collection.g.dart';
@@ -18,41 +19,66 @@ class MonthlyRecoveryCollection {
   @Index(composite: [CompositeIndex('month')])
   int year = 2026;
 
-  double principalDue = 0.0;
+  String principalDueEncrypted = '';
 
-  double interest = 0.0;
+  String interestEncrypted = '';
 
-  double penalInterest = 0.0;
+  String penalInterestEncrypted = '';
 
-  double otherCharges = 0.0;
+  String otherChargesEncrypted = '';
 
   bool isReviewed = false;
 
-  MonthlyRecovery toDomain() {
+  MonthlyRecovery toDomain([CipherService? cipher]) {
+    final pDue = cipher != null && principalDueEncrypted.isNotEmpty
+        ? cipher.decryptDouble(principalDueEncrypted)
+        : double.tryParse(principalDueEncrypted) ?? 0.0;
+
+    final intVal = cipher != null && interestEncrypted.isNotEmpty
+        ? cipher.decryptDouble(interestEncrypted)
+        : double.tryParse(interestEncrypted) ?? 0.0;
+
+    final penalVal = cipher != null && penalInterestEncrypted.isNotEmpty
+        ? cipher.decryptDouble(penalInterestEncrypted)
+        : double.tryParse(penalInterestEncrypted) ?? 0.0;
+
+    final othersVal = cipher != null && otherChargesEncrypted.isNotEmpty
+        ? cipher.decryptDouble(otherChargesEncrypted)
+        : double.tryParse(otherChargesEncrypted) ?? 0.0;
+
     return MonthlyRecovery(
       id: id,
       loanId: loanId,
       month: month,
       year: year,
-      principalDue: principalDue,
-      interest: interest,
-      penalInterest: penalInterest,
-      otherCharges: otherCharges,
+      principalDue: pDue,
+      interest: intVal,
+      penalInterest: penalVal,
+      otherCharges: othersVal,
       isReviewed: isReviewed,
     );
   }
 
-  static MonthlyRecoveryCollection fromDomain(MonthlyRecovery recovery) {
+  static MonthlyRecoveryCollection fromDomain(
+    MonthlyRecovery recovery, [
+    CipherService? cipher,
+  ]) {
     return MonthlyRecoveryCollection()
       ..id = recovery.id
       ..loanId = recovery.loanId
       ..month = recovery.month
       ..year = recovery.year
-      ..principalDue = recovery.principalDue
-      ..interest = recovery.interest
-      ..penalInterest = recovery.penalInterest
-      ..otherCharges = recovery.otherCharges
+      ..principalDueEncrypted =
+          cipher?.encryptDouble(recovery.principalDue) ??
+              recovery.principalDue.toString()
+      ..interestEncrypted = cipher?.encryptDouble(recovery.interest) ??
+          recovery.interest.toString()
+      ..penalInterestEncrypted =
+          cipher?.encryptDouble(recovery.penalInterest) ??
+              recovery.penalInterest.toString()
+      ..otherChargesEncrypted =
+          cipher?.encryptDouble(recovery.otherCharges) ??
+              recovery.otherCharges.toString()
       ..isReviewed = recovery.isReviewed;
   }
 }
-

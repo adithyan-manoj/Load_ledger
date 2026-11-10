@@ -1,4 +1,5 @@
 import 'package:isar_community/isar.dart';
+import '../../../core/security/cipher_service.dart';
 import '../../../domain/models/office.dart';
 
 part 'office_collection.g.dart';
@@ -15,19 +16,21 @@ class OfficeCollection {
 
   late String name;
 
-  Office toDomain() {
+  Office toDomain([CipherService? cipher]) {
     return Office(
       id: id,
       branchId: branchId,
-      name: name,
+      name: cipher?.decryptString(name) ?? name,
     );
   }
 
-  static OfficeCollection fromDomain(Office office) {
+  static OfficeCollection fromDomain(
+    Office office, [
+    CipherService? cipher,
+  ]) {
     return OfficeCollection()
       ..id = office.id
       ..branchId = office.branchId
-      ..name = office.name;
+      ..name = cipher?.encryptString(office.name) ?? office.name;
   }
 }
-

@@ -14,6 +14,7 @@ import 'repositories/isar_office_repository.dart';
 import 'repositories/isar_customer_repository.dart';
 import 'repositories/isar_loan_repository.dart';
 import 'repositories/isar_recovery_repository.dart';
+import '../core/security/security_providers.dart';
 
 // ==========================================
 // Database & Repository Providers
@@ -26,19 +27,35 @@ final isarDatabaseServiceProvider = Provider<IsarDatabaseService>((ref) {
 });
 
 final officeRepositoryProvider = Provider<IOfficeRepository>((ref) {
-  return IsarOfficeRepository(dbService: ref.watch(isarDatabaseServiceProvider));
+  final cipher = ref.watch(cipherServiceProvider).value;
+  return IsarOfficeRepository(
+    dbService: ref.watch(isarDatabaseServiceProvider),
+    cipherService: cipher,
+  );
 });
 
 final customerRepositoryProvider = Provider<ICustomerRepository>((ref) {
-  return IsarCustomerRepository(dbService: ref.watch(isarDatabaseServiceProvider));
+  final cipher = ref.watch(cipherServiceProvider).value;
+  return IsarCustomerRepository(
+    dbService: ref.watch(isarDatabaseServiceProvider),
+    cipherService: cipher,
+  );
 });
 
 final loanRepositoryProvider = Provider<ILoanRepository>((ref) {
-  return IsarLoanRepository(dbService: ref.watch(isarDatabaseServiceProvider));
+  final cipher = ref.watch(cipherServiceProvider).value;
+  return IsarLoanRepository(
+    dbService: ref.watch(isarDatabaseServiceProvider),
+    cipherService: cipher,
+  );
 });
 
 final recoveryRepositoryProvider = Provider<IRecoveryRepository>((ref) {
-  return IsarRecoveryRepository(dbService: ref.watch(isarDatabaseServiceProvider));
+  final cipher = ref.watch(cipherServiceProvider).value;
+  return IsarRecoveryRepository(
+    dbService: ref.watch(isarDatabaseServiceProvider),
+    cipherService: cipher,
+  );
 });
 
 final loanLedgerServiceProvider = Provider<LoanLedgerService>((ref) {
@@ -93,6 +110,9 @@ class AppState {
 class AppStateNotifier extends AsyncNotifier<AppState> {
   @override
   Future<AppState> build() async {
+    // Ensure cryptographic master key is initialized before querying database
+    await ref.watch(cipherServiceProvider.future);
+
     final officeRepo = ref.watch(officeRepositoryProvider);
     final customerRepo = ref.watch(customerRepositoryProvider);
     final loanRepo = ref.watch(loanRepositoryProvider);

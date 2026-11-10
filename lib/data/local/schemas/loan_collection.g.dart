@@ -22,10 +22,10 @@ const LoanCollectionSchema = CollectionSchema(
       name: r'accountNo',
       type: IsarType.string,
     ),
-    r'baseEmiAmount': PropertySchema(
+    r'baseEmiAmountEncrypted': PropertySchema(
       id: 1,
-      name: r'baseEmiAmount',
-      type: IsarType.double,
+      name: r'baseEmiAmountEncrypted',
+      type: IsarType.string,
     ),
     r'customerId': PropertySchema(
       id: 2,
@@ -33,10 +33,10 @@ const LoanCollectionSchema = CollectionSchema(
       type: IsarType.string,
     ),
     r'id': PropertySchema(id: 3, name: r'id', type: IsarType.string),
-    r'principalOutstanding': PropertySchema(
+    r'principalOutstandingEncrypted': PropertySchema(
       id: 4,
-      name: r'principalOutstanding',
-      type: IsarType.double,
+      name: r'principalOutstandingEncrypted',
+      type: IsarType.string,
     ),
     r'status': PropertySchema(id: 5, name: r'status', type: IsarType.string),
   },
@@ -73,19 +73,6 @@ const LoanCollectionSchema = CollectionSchema(
         ),
       ],
     ),
-    r'accountNo': IndexSchema(
-      id: 2373833044851941512,
-      name: r'accountNo',
-      unique: false,
-      replace: false,
-      properties: [
-        IndexPropertySchema(
-          name: r'accountNo',
-          type: IndexType.hash,
-          caseSensitive: true,
-        ),
-      ],
-    ),
     r'status': IndexSchema(
       id: -107785170620420283,
       name: r'status',
@@ -116,8 +103,10 @@ int _loanCollectionEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.accountNo.length * 3;
+  bytesCount += 3 + object.baseEmiAmountEncrypted.length * 3;
   bytesCount += 3 + object.customerId.length * 3;
   bytesCount += 3 + object.id.length * 3;
+  bytesCount += 3 + object.principalOutstandingEncrypted.length * 3;
   bytesCount += 3 + object.status.length * 3;
   return bytesCount;
 }
@@ -129,10 +118,10 @@ void _loanCollectionSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeString(offsets[0], object.accountNo);
-  writer.writeDouble(offsets[1], object.baseEmiAmount);
+  writer.writeString(offsets[1], object.baseEmiAmountEncrypted);
   writer.writeString(offsets[2], object.customerId);
   writer.writeString(offsets[3], object.id);
-  writer.writeDouble(offsets[4], object.principalOutstanding);
+  writer.writeString(offsets[4], object.principalOutstandingEncrypted);
   writer.writeString(offsets[5], object.status);
 }
 
@@ -144,11 +133,11 @@ LoanCollection _loanCollectionDeserialize(
 ) {
   final object = LoanCollection();
   object.accountNo = reader.readString(offsets[0]);
-  object.baseEmiAmount = reader.readDouble(offsets[1]);
+  object.baseEmiAmountEncrypted = reader.readString(offsets[1]);
   object.customerId = reader.readString(offsets[2]);
   object.id = reader.readString(offsets[3]);
   object.isarId = id;
-  object.principalOutstanding = reader.readDouble(offsets[4]);
+  object.principalOutstandingEncrypted = reader.readString(offsets[4]);
   object.status = reader.readString(offsets[5]);
   return object;
 }
@@ -163,13 +152,13 @@ P _loanCollectionDeserializeProp<P>(
     case 0:
       return (reader.readString(offset)) as P;
     case 1:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
       return (reader.readString(offset)) as P;
     case 4:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 5:
       return (reader.readString(offset)) as P;
     default:
@@ -436,58 +425,6 @@ extension LoanCollectionQueryWhere
     });
   }
 
-  QueryBuilder<LoanCollection, LoanCollection, QAfterWhereClause>
-  accountNoEqualTo(String accountNo) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(
-        IndexWhereClause.equalTo(indexName: r'accountNo', value: [accountNo]),
-      );
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterWhereClause>
-  accountNoNotEqualTo(String accountNo) {
-    return QueryBuilder.apply(this, (query) {
-      if (query.whereSort == Sort.asc) {
-        return query
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'accountNo',
-                lower: [],
-                upper: [accountNo],
-                includeUpper: false,
-              ),
-            )
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'accountNo',
-                lower: [accountNo],
-                includeLower: false,
-                upper: [],
-              ),
-            );
-      } else {
-        return query
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'accountNo',
-                lower: [accountNo],
-                includeLower: false,
-                upper: [],
-              ),
-            )
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'accountNo',
-                lower: [],
-                upper: [accountNo],
-                includeUpper: false,
-              ),
-            );
-      }
-    });
-  }
-
   QueryBuilder<LoanCollection, LoanCollection, QAfterWhereClause> statusEqualTo(
     String status,
   ) {
@@ -686,75 +623,144 @@ extension LoanCollectionQueryFilter
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-  baseEmiAmountEqualTo(double value, {double epsilon = Query.epsilon}) {
+  baseEmiAmountEncryptedEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.equalTo(
-          property: r'baseEmiAmount',
+          property: r'baseEmiAmountEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-  baseEmiAmountGreaterThan(
-    double value, {
+  baseEmiAmountEncryptedGreaterThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(
           include: include,
-          property: r'baseEmiAmount',
+          property: r'baseEmiAmountEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-  baseEmiAmountLessThan(
-    double value, {
+  baseEmiAmountEncryptedLessThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.lessThan(
           include: include,
-          property: r'baseEmiAmount',
+          property: r'baseEmiAmountEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-  baseEmiAmountBetween(
-    double lower,
-    double upper, {
+  baseEmiAmountEncryptedBetween(
+    String lower,
+    String upper, {
     bool includeLower = true,
     bool includeUpper = true,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.between(
-          property: r'baseEmiAmount',
+          property: r'baseEmiAmountEncrypted',
           lower: lower,
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
 
-          epsilon: epsilon,
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  baseEmiAmountEncryptedStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'baseEmiAmountEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  baseEmiAmountEncryptedEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'baseEmiAmountEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  baseEmiAmountEncryptedContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'baseEmiAmountEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  baseEmiAmountEncryptedMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'baseEmiAmountEncrypted',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  baseEmiAmountEncryptedIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'baseEmiAmountEncrypted', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  baseEmiAmountEncryptedIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          property: r'baseEmiAmountEncrypted',
+          value: '',
         ),
       );
     });
@@ -1097,75 +1103,162 @@ extension LoanCollectionQueryFilter
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-  principalOutstandingEqualTo(double value, {double epsilon = Query.epsilon}) {
+  principalOutstandingEncryptedEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.equalTo(
-          property: r'principalOutstanding',
+          property: r'principalOutstandingEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-  principalOutstandingGreaterThan(
-    double value, {
+  principalOutstandingEncryptedGreaterThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(
           include: include,
-          property: r'principalOutstanding',
+          property: r'principalOutstandingEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-  principalOutstandingLessThan(
-    double value, {
+  principalOutstandingEncryptedLessThan(
+    String value, {
     bool include = false,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.lessThan(
           include: include,
-          property: r'principalOutstanding',
+          property: r'principalOutstandingEncrypted',
           value: value,
-
-          epsilon: epsilon,
+          caseSensitive: caseSensitive,
         ),
       );
     });
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-  principalOutstandingBetween(
-    double lower,
-    double upper, {
+  principalOutstandingEncryptedBetween(
+    String lower,
+    String upper, {
     bool includeLower = true,
     bool includeUpper = true,
-    double epsilon = Query.epsilon,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.between(
-          property: r'principalOutstanding',
+          property: r'principalOutstandingEncrypted',
           lower: lower,
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
 
-          epsilon: epsilon,
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  principalOutstandingEncryptedStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'principalOutstandingEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  principalOutstandingEncryptedEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'principalOutstandingEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  principalOutstandingEncryptedContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'principalOutstandingEncrypted',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  principalOutstandingEncryptedMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'principalOutstandingEncrypted',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  principalOutstandingEncryptedIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'principalOutstandingEncrypted',
+          value: '',
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+  principalOutstandingEncryptedIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          property: r'principalOutstandingEncrypted',
+          value: '',
         ),
       );
     });
@@ -1335,16 +1428,16 @@ extension LoanCollectionQuerySortBy
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-  sortByBaseEmiAmount() {
+  sortByBaseEmiAmountEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'baseEmiAmount', Sort.asc);
+      return query.addSortBy(r'baseEmiAmountEncrypted', Sort.asc);
     });
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-  sortByBaseEmiAmountDesc() {
+  sortByBaseEmiAmountEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'baseEmiAmount', Sort.desc);
+      return query.addSortBy(r'baseEmiAmountEncrypted', Sort.desc);
     });
   }
 
@@ -1375,16 +1468,16 @@ extension LoanCollectionQuerySortBy
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-  sortByPrincipalOutstanding() {
+  sortByPrincipalOutstandingEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'principalOutstanding', Sort.asc);
+      return query.addSortBy(r'principalOutstandingEncrypted', Sort.asc);
     });
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-  sortByPrincipalOutstandingDesc() {
+  sortByPrincipalOutstandingEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'principalOutstanding', Sort.desc);
+      return query.addSortBy(r'principalOutstandingEncrypted', Sort.desc);
     });
   }
 
@@ -1418,16 +1511,16 @@ extension LoanCollectionQuerySortThenBy
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-  thenByBaseEmiAmount() {
+  thenByBaseEmiAmountEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'baseEmiAmount', Sort.asc);
+      return query.addSortBy(r'baseEmiAmountEncrypted', Sort.asc);
     });
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-  thenByBaseEmiAmountDesc() {
+  thenByBaseEmiAmountEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'baseEmiAmount', Sort.desc);
+      return query.addSortBy(r'baseEmiAmountEncrypted', Sort.desc);
     });
   }
 
@@ -1471,16 +1564,16 @@ extension LoanCollectionQuerySortThenBy
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-  thenByPrincipalOutstanding() {
+  thenByPrincipalOutstandingEncrypted() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'principalOutstanding', Sort.asc);
+      return query.addSortBy(r'principalOutstandingEncrypted', Sort.asc);
     });
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-  thenByPrincipalOutstandingDesc() {
+  thenByPrincipalOutstandingEncryptedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'principalOutstanding', Sort.desc);
+      return query.addSortBy(r'principalOutstandingEncrypted', Sort.desc);
     });
   }
 
@@ -1509,9 +1602,12 @@ extension LoanCollectionQueryWhereDistinct
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QDistinct>
-  distinctByBaseEmiAmount() {
+  distinctByBaseEmiAmountEncrypted({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'baseEmiAmount');
+      return query.addDistinctBy(
+        r'baseEmiAmountEncrypted',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
@@ -1532,9 +1628,12 @@ extension LoanCollectionQueryWhereDistinct
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QDistinct>
-  distinctByPrincipalOutstanding() {
+  distinctByPrincipalOutstandingEncrypted({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'principalOutstanding');
+      return query.addDistinctBy(
+        r'principalOutstandingEncrypted',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
@@ -1561,10 +1660,10 @@ extension LoanCollectionQueryProperty
     });
   }
 
-  QueryBuilder<LoanCollection, double, QQueryOperations>
-  baseEmiAmountProperty() {
+  QueryBuilder<LoanCollection, String, QQueryOperations>
+  baseEmiAmountEncryptedProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'baseEmiAmount');
+      return query.addPropertyName(r'baseEmiAmountEncrypted');
     });
   }
 
@@ -1580,10 +1679,10 @@ extension LoanCollectionQueryProperty
     });
   }
 
-  QueryBuilder<LoanCollection, double, QQueryOperations>
-  principalOutstandingProperty() {
+  QueryBuilder<LoanCollection, String, QQueryOperations>
+  principalOutstandingEncryptedProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'principalOutstanding');
+      return query.addPropertyName(r'principalOutstandingEncrypted');
     });
   }
 

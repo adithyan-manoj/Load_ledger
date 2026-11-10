@@ -1,4 +1,5 @@
 import 'package:isar_community/isar.dart';
+import '../../core/security/cipher_service.dart';
 import '../../domain/models/customer.dart';
 import '../../domain/repositories/i_customer_repository.dart';
 import '../local/isar_database_service.dart';
@@ -6,8 +7,12 @@ import '../local/schemas/customer_collection.dart';
 
 class IsarCustomerRepository implements ICustomerRepository {
   final IsarDatabaseService dbService;
+  final CipherService? cipherService;
 
-  IsarCustomerRepository({required this.dbService});
+  IsarCustomerRepository({
+    required this.dbService,
+    this.cipherService,
+  });
 
   @override
   Future<List<Customer>> getAllCustomers({String? officeId}) async {
@@ -21,7 +26,7 @@ class IsarCustomerRepository implements ICustomerRepository {
     } else {
       collections = await isar.customerCollections.where().findAll();
     }
-    return collections.map((c) => c.toDomain()).toList();
+    return collections.map((c) => c.toDomain(cipherService)).toList();
   }
 
   @override
@@ -29,7 +34,7 @@ class IsarCustomerRepository implements ICustomerRepository {
     final isar = await dbService.isar;
     final collection =
         await isar.customerCollections.filter().idEqualTo(id).findFirst();
-    return collection?.toDomain();
+    return collection?.toDomain(cipherService);
   }
 
   @override
@@ -40,7 +45,7 @@ class IsarCustomerRepository implements ICustomerRepository {
           .filter()
           .idEqualTo(customer.id)
           .findFirst();
-      final collection = CustomerCollection.fromDomain(customer);
+      final collection = CustomerCollection.fromDomain(customer, cipherService);
       if (existing != null) {
         collection.isarId = existing.isarId;
       }
@@ -76,4 +81,3 @@ class IsarCustomerRepository implements ICustomerRepository {
     });
   }
 }
-

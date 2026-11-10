@@ -11,8 +11,24 @@ final authServiceProvider = Provider<AuthService>((ref) {
 
 /// Riverpod 3 Notifier managing reactive Authentication State.
 class AuthNotifier extends Notifier<AuthState> {
+  /// When true, bypasses the Google login screen and initializes with a local authorized officer.
+  /// Biometric / PIN physical device authentication remains 100% active on cold launch & resume.
+  static const bool bypassGoogleAuth = true;
+
+  static const defaultLocalOfficer = AuthEmployee(
+    id: 'local-admin-01',
+    email: 'officer@keralabank.co.in',
+    name: 'Postal Recovery Officer',
+    role: 'admin',
+    assignedBranches: ['punalur', 'adoor', 'kollam', 'alappuzha'],
+    isActive: true,
+  );
+
   @override
   AuthState build() {
+    if (bypassGoogleAuth) {
+      return AuthState.authenticated(defaultLocalOfficer);
+    }
     // Automatically trigger background session validation on startup
     Future.microtask(() => checkExistingSession());
     return AuthState.initial();

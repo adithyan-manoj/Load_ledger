@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/models/office.dart';
 import '../domain/models/customer.dart';
@@ -9,6 +10,7 @@ import '../domain/repositories/i_loan_repository.dart';
 import '../domain/repositories/i_recovery_repository.dart';
 import '../domain/services/loan_ledger_service.dart';
 import '../domain/services/recovery_engine.dart';
+import '../domain/services/data_seeder_service.dart';
 import 'local/isar_database_service.dart';
 import 'repositories/isar_office_repository.dart';
 import 'repositories/isar_customer_repository.dart';
@@ -75,6 +77,15 @@ final recoveryEngineProvider = Provider<RecoveryEngine>((ref) {
   );
 });
 
+final dataSeederServiceProvider = Provider<DataSeederService>((ref) {
+  return DataSeederService(
+    officeRepo: ref.watch(officeRepositoryProvider),
+    customerRepo: ref.watch(customerRepositoryProvider),
+    loanRepo: ref.watch(loanRepositoryProvider),
+    recoveryRepo: ref.watch(recoveryRepositoryProvider),
+  );
+});
+
 // ==========================================
 // Central App State & Notifier
 // ==========================================
@@ -118,20 +129,51 @@ class AppStateNotifier extends AsyncNotifier<AppState> {
     final loanRepo = ref.watch(loanRepositoryProvider);
     final recoveryRepo = ref.watch(recoveryRepositoryProvider);
 
-    // Fetch all core data in parallel directly from local Isar database
+    // Force fresh seed of the newly extracted PDF dataset and wipe old records
+    try {
+      final jsonString =
+          await rootBundle.loadString('assets/data/extracted_data.json');
+      final seeder = ref.read(dataSeederServiceProvider);
+      await seeder.seedFromJsonString(jsonString, wipeExisting: true);
+    } catch (_) {}
+
+    final offices = await officeRepo.getAllOffices();
+
     final results = await Future.wait([
-      officeRepo.getAllOffices(),
       customerRepo.getAllCustomers(),
       loanRepo.getAllLoans(),
       recoveryRepo.getRecoveries(),
     ]);
 
     return AppState(
-      offices: results[0] as List<Office>,
-      customers: results[1] as List<Customer>,
-      loans: results[2] as List<Loan>,
-      monthlyRecoveries: results[3] as List<MonthlyRecovery>,
+      offices: offices,
+      customers: results[0] as List<Customer>,
+      loans: results[1] as List<Loan>,
+      monthlyRecoveries: results[2] as List<MonthlyRecovery>,
     );
+  }
+
+  /// Wipes all data across all collections and refreshes application state.
+  Future<void> clearDatabase() async {
+    final seeder = ref.read(dataSeederServiceProvider);
+    await seeder.clearDatabase();
+    ref.invalidateSelf();
+  }
+
+  /// Seeds or updates data from a JSON string or assets with conflict management.
+  Future<SeederResult> importDataFromJson(
+    String jsonString, {
+    bool wipeExisting = false,
+    ImportConflictAction conflictAction = ImportConflictAction.replace,
+  }) async {
+    final seeder = ref.read(dataSeederServiceProvider);
+    final result = await seeder.seedFromJsonString(
+      jsonString,
+      wipeExisting: wipeExisting,
+      conflictAction: conflictAction,
+    );
+    ref.invalidateSelf();
+    return result;
   }
 
   Future<void> addBranch(String name) async {

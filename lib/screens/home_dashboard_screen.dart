@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/data_providers.dart';
@@ -7,6 +9,8 @@ import '../widgets/glass_card.dart';
 import '../widgets/background_scaffold.dart';
 import 'splash_loading_screen.dart';
 import '../core/auth/auth_providers.dart';
+import '../core/security/security_providers.dart';
+import '../domain/services/data_seeder_service.dart';
 
 class HomeDashboardScreen extends ConsumerWidget {
   const HomeDashboardScreen({super.key});
@@ -134,6 +138,43 @@ class HomeDashboardScreen extends ConsumerWidget {
                       ),
                       const PopupMenuDivider(),
                       const PopupMenuItem(
+                        value: 'import_pdf',
+                        child: Row(
+                          children: [
+                            Icon(Icons.picture_as_pdf_rounded,
+                                size: 18, color: AppTheme.accent),
+                            SizedBox(width: 8),
+                            Text('Import / Update PDF Data',
+                                style: TextStyle(color: Colors.white)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'clear_db',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_forever_rounded,
+                                size: 18, color: Colors.orangeAccent),
+                            SizedBox(width: 8),
+                            Text('Clear Local Database',
+                                style: TextStyle(color: Colors.orangeAccent)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'lock',
+                        child: Row(
+                          children: [
+                            Icon(Icons.fingerprint_rounded,
+                                size: 18, color: AppTheme.primary),
+                            SizedBox(width: 8),
+                            Text('Lock App (Biometrics)',
+                                style: TextStyle(color: AppTheme.primary)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
                         value: 'logout',
                         child: Row(
                           children: [
@@ -147,7 +188,13 @@ class HomeDashboardScreen extends ConsumerWidget {
                       ),
                     ],
                     onSelected: (val) {
-                      if (val == 'logout') {
+                      if (val == 'import_pdf') {
+                        _handlePdfImport(context, ref);
+                      } else if (val == 'clear_db') {
+                        _handleClearDatabase(context, ref);
+                      } else if (val == 'lock') {
+                        ref.read(appLockProvider.notifier).lock();
+                      } else if (val == 'logout') {
                         ref.read(authNotifierProvider.notifier).signOut();
                       }
                     },
@@ -394,6 +441,184 @@ class HomeDashboardScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _handleClearDatabase(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+            SizedBox(width: 10),
+            Text('Clear Local Database',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to completely erase all local data? This will remove all branches, customer profiles, and loan ledgers from this device.',
+          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Wipe Everything',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(appStateProvider.notifier).clearDatabase();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Local database completely cleared.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handlePdfImport(BuildContext context, WidgetRef ref) async {
+    try {
+      final jsonString =
+          await rootBundle.loadString('assets/data/extracted_data.json');
+      final Map<String, dynamic> data = jsonDecode(jsonString);
+      final incomingBranches =
+          data.keys.where((k) => k != 'Unknown').toList();
+
+      final seeder = ref.read(dataSeederServiceProvider);
+      final conflicts =
+          await seeder.findConflictingBranches(incomingBranches);
+
+      ImportConflictAction conflictAction = ImportConflictAction.replace;
+
+      if (conflicts.isNotEmpty && context.mounted) {
+        // Show conflict resolution dialog: ask user whether to replace or keep old
+        final choice = await showDialog<ImportConflictAction>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppTheme.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.inventory_2_outlined,
+                    color: AppTheme.accent, size: 26),
+                SizedBox(width: 10),
+                Text('Existing Records Found',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Data for branch(es) "${conflicts.join(", ")}" already exists in your local database.\n\nWhich version would you like to keep?',
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 13, height: 1.4),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: const Text(
+                    '• Replace with New: Overwrites existing branch records with fresh PDF data.\n• Keep Old: Retains your existing branch records and cancels importing duplicates.',
+                    style: TextStyle(
+                        color: Colors.white60, fontSize: 12, height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, null),
+                child: const Text('Cancel',
+                    style: TextStyle(color: Colors.white60)),
+              ),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppTheme.accent),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () => Navigator.pop(
+                    ctx, ImportConflictAction.keepExisting),
+                child: const Text('Keep Old Data',
+                    style: TextStyle(color: AppTheme.accent)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () =>
+                    Navigator.pop(ctx, ImportConflictAction.replace),
+                child: const Text('Replace with New',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+
+        if (choice == null) return;
+        conflictAction = choice;
+      }
+
+      final result =
+          await ref.read(appStateProvider.notifier).importDataFromJson(
+                jsonString,
+                wipeExisting: false,
+                conflictAction: conflictAction,
+              );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Imported ${result.officesCreated} branches, ${result.customersCreated} members, and ${result.loansCreated} loans successfully.',
+            ),
+            backgroundColor: AppTheme.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to import PDF data: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 }
 

@@ -8,6 +8,11 @@ import '../repositories/i_customer_repository.dart';
 import '../repositories/i_loan_repository.dart';
 import '../repositories/i_recovery_repository.dart';
 
+enum ImportConflictAction {
+  replace, // Delete old records for the branch and insert new
+  keepExisting, // Keep old records and skip new ones
+}
+
 class SeederResult {
   final int officesCreated;
   final int customersCreated;
@@ -24,9 +29,7 @@ class SeederResult {
       'SeederResult(offices: $officesCreated, customers: $customersCreated, loans: $loansCreated)';
 }
 
-/// Port of backend/populate_db.py to pure Dart.
-///
-/// Enables seeding local embedded databases from extracted_data.json or bundled assets.
+/// Service managing database resets, PDF data ingestion, and conflict handling.
 class DataSeederService {
   final IOfficeRepository officeRepo;
   final ICustomerRepository customerRepo;
@@ -42,27 +45,53 @@ class DataSeederService {
     Uuid? uuid,
   }) : _uuid = uuid ?? const Uuid();
 
+  /// Wipes all data across all collections in the local database.
+  Future<void> clearDatabase() async {
+    await recoveryRepo.clearAllRecoveries();
+    await loanRepo.clearAllLoans();
+    await customerRepo.clearAllCustomers();
+    await officeRepo.clearAllOffices();
+  }
+
+  /// Returns list of branch names from the dataset that already exist in the database.
+  Future<List<String>> findConflictingBranches(
+      List<String> incomingBranchNames) async {
+    final existingOffices = await officeRepo.getAllOffices();
+    final existingNames =
+        existingOffices.map((o) => o.name.toLowerCase()).toSet();
+    return incomingBranchNames
+        .where((b) => existingNames.contains(b.toLowerCase()))
+        .toList();
+  }
+
   /// Seeds data from a JSON string (e.g. extracted_data.json or asset file).
   Future<SeederResult> seedFromJsonString(
     String jsonString, {
-    bool wipeExisting = true,
+    bool wipeExisting = false,
+    ImportConflictAction conflictAction = ImportConflictAction.replace,
   }) async {
     final Map<String, dynamic> data = json.decode(jsonString);
-    return seedFromMap(data, wipeExisting: wipeExisting);
+    return seedFromMap(
+      data,
+      wipeExisting: wipeExisting,
+      conflictAction: conflictAction,
+    );
   }
 
-  /// Seeds data from a structured map.
+  /// Seeds data from a structured map with conflict management.
   Future<SeederResult> seedFromMap(
     Map<String, dynamic> data, {
-    bool wipeExisting = true,
+    bool wipeExisting = false,
+    ImportConflictAction conflictAction = ImportConflictAction.replace,
   }) async {
     if (wipeExisting) {
-      // Cascaded wipe in safe foreign-key order
-      await recoveryRepo.clearAllRecoveries();
-      await loanRepo.clearAllLoans();
-      await customerRepo.clearAllCustomers();
-      await officeRepo.clearAllOffices();
+      await clearDatabase();
     }
+
+    final existingOffices = await officeRepo.getAllOffices();
+    final officeMapByName = {
+      for (final o in existingOffices) o.name.toLowerCase(): o
+    };
 
     int officesCreated = 0;
     int customersCreated = 0;
@@ -73,16 +102,35 @@ class DataSeederService {
       if (branchName == 'Unknown') continue;
 
       final records = entry.value as List<dynamic>;
+      final lowerName = branchName.toLowerCase();
+      final existingOffice = officeMapByName[lowerName];
 
-      // 1. Create Office
-      final officeId = _uuid.v4();
-      final office = Office(
-        id: officeId,
-        branchId: branchName.toLowerCase().replaceAll(' ', '_'),
-        name: branchName,
-      );
-      await officeRepo.saveOffice(office);
-      officesCreated++;
+      String officeId;
+
+      if (existingOffice != null) {
+        if (conflictAction == ImportConflictAction.keepExisting) {
+          // User chose to keep old records: skip this branch
+          continue;
+        } else {
+          // User chose to replace: delete existing customers & loans for this office
+          officeId = existingOffice.id;
+          final existingCustomers =
+              await customerRepo.getAllCustomers(officeId: officeId);
+          for (final c in existingCustomers) {
+            await loanRepo.deleteLoansByCustomerId(c.id);
+          }
+          await customerRepo.deleteCustomersByOfficeId(officeId);
+        }
+      } else {
+        officeId = _uuid.v4();
+        final office = Office(
+          id: officeId,
+          branchId: branchName.toLowerCase().replaceAll(' ', '_'),
+          name: branchName,
+        );
+        await officeRepo.saveOffice(office);
+        officesCreated++;
+      }
 
       // Track customers within this branch to deduplicate by membership number
       final Map<String, String> branchCustomerMap = {};
@@ -92,7 +140,7 @@ class DataSeederService {
         final memberNo = rec['member_no']?.toString() ?? '';
         final customerName = rec['name']?.toString() ?? 'Unknown';
 
-        // 2. Create customer if not already registered in this branch
+        // Create customer if not already registered in this branch
         if (!branchCustomerMap.containsKey(memberNo)) {
           final customerId = _uuid.v4();
           final customer = Customer(
@@ -108,7 +156,7 @@ class DataSeederService {
 
         final customerId = branchCustomerMap[memberNo]!;
 
-        // 3. Create Loan
+        // Create Loan
         final baseEmi = (rec['base_emi'] as num?)?.toDouble() ?? 0.0;
         final principalOs = (rec['principal_os'] as num?)?.toDouble() ?? 0.0;
         final accountNo = rec['account_no']?.toString() ?? '';
@@ -133,4 +181,3 @@ class DataSeederService {
     );
   }
 }
-

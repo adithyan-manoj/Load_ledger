@@ -9,6 +9,7 @@ import 'screens/branch_details_screen.dart';
 import 'screens/customer_profile_screen.dart';
 import 'screens/monthly_drafts_screen.dart';
 import 'screens/pdf_preview_screen.dart';
+import 'screens/profile_settings_screen.dart';
 import 'screens/security/app_lock_screen.dart';
 import 'core/security/security_providers.dart';
 import 'core/auth/auth_models.dart';
@@ -64,6 +65,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         builder: (context, state) => const HomeDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const ProfileSettingsScreen(),
       ),
       GoRoute(
         path: '/branch/:id',

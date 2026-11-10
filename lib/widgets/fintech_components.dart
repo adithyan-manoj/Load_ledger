@@ -183,13 +183,17 @@ class FintechButton extends StatelessWidget {
                   Icon(icon, size: 16, color: fgColor),
                   const SizedBox(width: 8),
                 ],
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: fgColor,
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
+                Flexible(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: fgColor,
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

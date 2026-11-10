@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../widgets/glass_card.dart';
-import '../widgets/background_scaffold.dart';
+import '../theme/app_theme.dart';
+import '../widgets/fintech_components.dart';
 
 class SplashLoadingScreen extends StatelessWidget {
   final String message;
@@ -8,58 +8,69 @@ class SplashLoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BackgroundScaffold(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: 180,
-                width: 180,
-                child: GlassCard(
-                  padding: EdgeInsets.zero,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.security_rounded, size: 40, color: Colors.white),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: 40,
-                          height: 40,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3,
-                            color: Colors.white.withValues(alpha: 0.8),
-                            backgroundColor: Colors.white10,
-                          ),
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FintechCard(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceVariant,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.border),
                         ),
-                      ],
-                    ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.security_rounded,
+                          size: 24,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 40),
-              Text(
-                message.toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  letterSpacing: 2,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
+                const SizedBox(height: 32),
+                Text(
+                  message.toUpperCase(),
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    letterSpacing: 1.5,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'SAFE · SECURE · RELIABLE',
-                style: TextStyle(
-                  color: Colors.white24,
-                  fontSize: 9,
-                  letterSpacing: 1,
+                const SizedBox(height: 6),
+                const Text(
+                  'ENCRYPTED · LOCAL-FIRST · RECOVERY',
+                  style: TextStyle(
+                    color: AppTheme.textTertiary,
+                    fontSize: 9,
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

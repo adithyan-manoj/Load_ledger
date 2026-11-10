@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -13,87 +12,116 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width > 800;
 
-    // Glass sidebar content
-    final sidebarContent = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(28, 40, 28, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.account_balance_outlined,
-                  size: 28, color: AppTheme.primary),
-              SizedBox(height: 12),
-              Text(
-                'Co-op Society',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                  letterSpacing: -0.3,
+    final sidebarContent = Container(
+      color: AppTheme.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 32, 24, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.account_balance_outlined,
+                    size: 26, color: AppTheme.primary),
+                SizedBox(height: 10),
+                Text(
+                  'Co-op Society',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
                 ),
-              ),
-              Text(
-                'Loan Recovery',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w400,
+                Text(
+                  'Loan Recovery Platform',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Divider(height: 1, color: AppTheme.divider),
-        ),
-        const SizedBox(height: 12),
-        _SidebarTile(
-          icon: CupertinoIcons.person_3,
-          label: 'Customers',
-          selected: true,
-          onTap: () {
-            context.go('/');
-            if (!isDesktop) Navigator.of(context).pop();
-          },
-        ),
-        _SidebarTile(
-          icon: CupertinoIcons.doc_text,
-          label: 'Monthly EMI Drafts',
-          selected: false,
-          onTap: () {
-            context.go('/drafts');
-            if (!isDesktop) Navigator.of(context).pop();
-          },
-        ),
-      ],
+          const Divider(height: 1, color: AppTheme.border),
+          const SizedBox(height: 12),
+          _SidebarTile(
+            icon: CupertinoIcons.person_3,
+            label: 'Customers',
+            selected: true,
+            onTap: () {
+              context.go('/');
+              if (!isDesktop) Navigator.of(context).pop();
+            },
+          ),
+          _SidebarTile(
+            icon: CupertinoIcons.doc_text,
+            label: 'Drafts',
+            selected: false,
+            onTap: () {
+              if (!isDesktop) Navigator.of(context).pop();
+            },
+          ),
+          const Spacer(),
+          const Divider(height: 1, color: AppTheme.border),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text('AD',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primary)),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Officer',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary)),
+                      Text('System Admin',
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
 
     if (isDesktop) {
       return Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppTheme.background,
         body: Row(
           children: [
-            // Glass sidebar
-            ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  width: 240,
-                  decoration: const BoxDecoration(
-                    color: AppTheme.glassWhite,
-                    border: Border(
-                      right: BorderSide(
-                        color: AppTheme.glassBorder,
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: sidebarContent,
+            Container(
+              width: 240,
+              decoration: const BoxDecoration(
+                border: Border(
+                  right: BorderSide(color: AppTheme.border, width: 1.0),
                 ),
               ),
+              child: sidebarContent,
             ),
             Expanded(child: child),
           ],
@@ -101,28 +129,13 @@ class DashboardScreen extends StatelessWidget {
       );
     }
 
-    // Mobile: drawer
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Loan Recovery System'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
+        title: const Text('Co-op Recovery'),
       ),
       drawer: Drawer(
-        backgroundColor: Colors.transparent,
-        child: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: AppTheme.glassWhite,
-              ),
-              child: sidebarContent,
-            ),
-          ),
-        ),
+        child: sidebarContent,
       ),
       body: child,
     );
@@ -146,42 +159,35 @@ class _SidebarTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: selected
-                ? AppTheme.primary.withValues(alpha: 0.08)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: selected
-                ? Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.15),
-                    width: 1)
-                : null,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: selected ? AppTheme.primary : AppTheme.textSecondary,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight:
-                      selected ? FontWeight.w600 : FontWeight.w400,
-                  color: selected
-                      ? AppTheme.primary
-                      : AppTheme.textSecondary,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: selected ? AppTheme.surfaceVariant : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: selected ? AppTheme.primary : AppTheme.textSecondary,
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected ? AppTheme.primary : AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
